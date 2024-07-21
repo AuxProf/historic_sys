@@ -1,12 +1,12 @@
-use actix_web::{get, App, HttpResponse, HttpServer, Responder};
-use dotenv::dotenv;
 mod database{pub mod postgres;}
+mod traits{pub mod crud;}
+mod entities;
+mod routes;
 
+use actix_web::{App, HttpServer};
+use dotenv::dotenv;
+use routes::index;
 
-#[get("/")]
-async fn index() -> impl Responder{
-    HttpResponse::Ok().body("Hello world!")
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
