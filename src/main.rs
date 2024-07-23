@@ -28,6 +28,9 @@ async fn main() -> std::io::Result<()> {
                 postgress_cli: _pool.clone(),
             }))
             .configure(entities::user::controller::user_routes)
+            .configure(entities::message::controller::message_routes)
+            .configure(entities::chat::controller::chat_routes)
+            .configure(entities::file::controller::file_routes)
     })
     .bind("127.0.0.1:8000")?
     .run()

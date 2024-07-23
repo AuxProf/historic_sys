@@ -4,5 +4,6 @@ CREATE TABLE "files" (
   "name" varchar,
   "file_id" varchar,
   "file_path" varchar,
-  "file_content" varchar
+  "file_content" varchar,
+  "created_at" timestamp
 );
