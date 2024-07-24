@@ -1,16 +1,15 @@
 
 use actix_web::{get, post, web, HttpResponse, Responder};
-use super::model::{ListFile, CreateFile, File};
-use crate::AppState;
+use super::model::{ListFile, CreateFile};
+use crate::{entities::file::model::ShowFile, AppState};
 use sqlx::Row;
 use uuid::Uuid;
-use chrono;
 
 
-#[get("/file/{user_id}")]
-async fn get_file_list(app_state: web::Data<AppState>, user_id: Uuid) -> impl Responder {
-    let result = sqlx::query("SELECT role, content FROM files WHERE user_id = $1 ORDER BY created_at ASC")
-    .bind(id)
+#[get("/files/{user_id}")]
+async fn get_file_list(app_state: web::Data<AppState>, user_id: web::Path<Uuid>) -> impl Responder {
+    let result = sqlx::query("SELECT id, name FROM files WHERE user_id = $1 ORDER BY created_at ASC")
+    .bind(&user_id.into_inner())
     .fetch_all(&app_state.postgress_cli)
     .await;
 
@@ -18,19 +17,20 @@ async fn get_file_list(app_state: web::Data<AppState>, user_id: Uuid) -> impl Re
         Ok(file) => HttpResponse::Ok().json(
             file
             .iter()
-            .map(|fl| Contentfile {
-                content: fl.get("content")
+            .map(|fl| ListFile {
+                id: fl.get("id"),
+                name: fl.get("name")
             })
-            .collect::<Vec<Contentfile>>()
+            .collect::<Vec<ListFile>>()
         ),
         Err(_) => HttpResponse::InternalServerError().body("Erro ao puxar todos os usuarios")
     }
 }
 
-#[get("/file/{user_id}")]
-async fn get_file(app_state: web::Data<AppState>, user_id: Uuid) -> impl Responder {
-    let result = sqlx::query("SELECT role, content FROM files WHERE $1 ORDER BY created_at ASC")
-    .bind(id)
+#[get("/file/{id}")]
+async fn get_file(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl Responder {
+    let result = sqlx::query("SELECT * FROM files WHERE id = $1")
+    .bind(&id.into_inner())
     .fetch_all(&app_state.postgress_cli)
     .await;
 
@@ -38,25 +38,31 @@ async fn get_file(app_state: web::Data<AppState>, user_id: Uuid) -> impl Respond
         Ok(file) => HttpResponse::Ok().json(
             file
             .iter()
-            .map(|fl| Contentfile {
-                content: fl.get("content")
+            .map(|fl| ShowFile { 
+                id: fl.get("id"),
+                name: fl.get("name"), 
+                file_id: fl.get("file_id"), 
+                file_path: fl.get("file_path"), 
+                file_content: fl.get("file_content")
             })
-            .collect::<Vec<Contentfile>>()
+            .collect::<Vec<ShowFile>>()
         ),
         Err(_) => HttpResponse::InternalServerError().body("Erro ao puxar todos os usuarios")
     }
 }
 
 #[post("/file/{user_id}")]
-async fn create(app_state: web::Data<AppState>, file: web::Json<Createfile>, user_id: Uuid) -> impl Responder {
+async fn create(app_state: web::Data<AppState>, file: web::Json<CreateFile>, user_id: web::Path<Uuid>) -> impl Responder {
     let now = chrono::offset::Utc::now();
-    let result =  sqlx::query(
-        "INSERT INTO users (id, user_id, role, content, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *"
+    let result: Result<sqlx::postgres::PgRow, sqlx::Error> =  sqlx::query(
+        "INSERT INTO files (id, user_id, name, file_id, file_path, file_content, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *"
     )
     .bind(Uuid::new_v4())
-    .bind(&user_id)
-    .bind(&file.role)
-    .bind(&file.content)
+    .bind(&user_id.into_inner())
+    .bind(&file.name)
+    .bind(&file.file_id)
+    .bind(&file.file_path)
+    .bind(&file.file_content)
     .bind(&now)
     .fetch_one(&app_state.postgress_cli)
     .await;
@@ -64,11 +70,12 @@ async fn create(app_state: web::Data<AppState>, file: web::Json<Createfile>, use
     
     match result {
         Ok(_) => HttpResponse::Ok().body("file insert"),
-        Err(_) => HttpResponse::InternalServerError().body("Erro ao inserir file")
+        Err(err) => HttpResponse::InternalServerError().body("Erro ao inserir file: ".to_owned() + &err.to_string())
     }
 }
 
 pub fn file_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_chat)
+    cfg.service(get_file)
+    .service(get_file_list)
     .service(create);
 }

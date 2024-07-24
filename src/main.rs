@@ -1,15 +1,10 @@
 mod database {
     pub mod postgres;
 }
-mod traits {
-    pub mod crud;
-}
 mod entities;
-mod routes;
 
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-use routes::index;
 use sqlx::{Pool, Postgres};
 
 #[derive(Clone)]

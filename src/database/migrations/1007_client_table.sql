@@ -1,5 +1,5 @@
 CREATE TABLE "users" (
   "id" uuid PRIMARY KEY,
-  "email" varchar unique,
+  "login" varchar unique,
   "password" varchar
 );

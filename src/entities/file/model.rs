@@ -1,26 +1,38 @@
-use chrono::TimeDelta;
+use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Local};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct File {
-    id: Uuid,
-    user_id: Uuid,
-    name: String,
-    file_id: String,
-    file_path: String,
-    file_content: String,
-    created_at: TimeDelta
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub file_id: String,
+    pub file_path: String,
+    pub file_content: String,
+    pub created_at: DateTime<Local>
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ShowFile {
+    pub id: Uuid,
+    pub name: String,
+    pub file_id: String,
+    pub file_path: String,
+    pub file_content: String
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateFile {
-    role: String,
-    content: String,
+    pub name: String,
+    pub file_id: String,
+    pub file_path: String,
+    pub file_content: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ListFile {
-    id: Uuid,
-    name: String
+    pub id: Uuid,
+    pub name: String
 }
 

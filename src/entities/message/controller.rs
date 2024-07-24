@@ -1,6 +1,6 @@
 
 use actix_web::{get, post, web, HttpResponse, Responder};
-use super::model::{ContentMessage, Message, CreateMessage};
+use super::model::{ContentMessage, CreateMessage};
 use crate::AppState;
 use sqlx::Row;
 use uuid::Uuid;
@@ -8,9 +8,9 @@ use chrono;
 
 
 #[get("/message/{chat_id}")]
-async fn get_chat(app_state: web::Data<AppState>, chat_id: Uuid) -> impl Responder {
+async fn get_chat(app_state: web::Data<AppState>, chat_id: web::Path<Uuid>) -> impl Responder {
     let result = sqlx::query("SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC")
-    .bind(&id)
+    .bind(&chat_id.into_inner())
     .fetch_all(&app_state.postgress_cli)
     .await;
 
@@ -28,13 +28,13 @@ async fn get_chat(app_state: web::Data<AppState>, chat_id: Uuid) -> impl Respond
 }
 
 #[post("/message/{chat_id}")]
-async fn create(app_state: web::Data<AppState>, message: web::Json<CreateMessage>, chat_id: Uuid) -> impl Responder {
+async fn create(app_state: web::Data<AppState>, message: web::Json<CreateMessage>, chat_id: web::Path<Uuid>) -> impl Responder {
     let now = chrono::offset::Utc::now();
     let result =  sqlx::query(
-        "INSERT INTO users (id, chat_id, role, content, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *"
+        "INSERT INTO messages (id, chat_id, role, content, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *"
     )
     .bind(Uuid::new_v4())
-    .bind(&chat_id)
+    .bind(&chat_id.into_inner())
     .bind(&message.role)
     .bind(&message.content)
     .bind(&now)

@@ -1,6 +1,6 @@
 
 use actix_web::{get, post, web, HttpResponse, Responder};
-use super::model::{Chat, TitleChat, CreateChat};
+use super::model::{TitleChat, CreateChat};
 use crate::AppState;
 use sqlx::Row;
 use uuid::Uuid;
@@ -8,9 +8,9 @@ use chrono;
 
 
 #[get("/chat/{user_id}")]
-async fn get_chat_list(app_state: web::Data<AppState>, user_id: Uuid) -> impl Responder {
+async fn get_chat_list(app_state: web::Data<AppState>, user_id: web::Path<Uuid>) -> impl Responder {
     let result = sqlx::query("SELECT id, title FROM chats WHERE user_id = $1 ORDER BY created_at ASC")
-    .bind(&user_id)
+    .bind(&user_id.into_inner())
     .fetch_all(&app_state.postgress_cli)
     .await;
 
@@ -18,23 +18,24 @@ async fn get_chat_list(app_state: web::Data<AppState>, user_id: Uuid) -> impl Re
         Ok(chats) => HttpResponse::Ok().json(
             chats
             .iter()
-            .map(|chat| ContentMessage {
+            .map(|chat| TitleChat {
                 id: chat.get("id"),
                 title: chat.get("title")
             })
-            .collect::<Vec<ContentMessage>>()
+            .collect::<Vec<TitleChat>>()
         ),
         Err(_) => HttpResponse::InternalServerError().body("Erro ao puxar todos os chats")
     }
 }
 
 #[post("/chat/{user_id}")]
-async fn create(app_state: web::Data<AppState>, message: web::Json<CreateChat>, user_id: Uuid) -> impl Responder {
+async fn create(app_state: web::Data<AppState>, message: web::Json<CreateChat>, user_id: web::Path<Uuid>) -> impl Responder {
+    let now = chrono::offset::Utc::now();
     let result =  sqlx::query(
-        "INSERT INTO users (id, user_id, title, created_at) VALUES ($1, $2, $3, $4) RETURNING *"
+        "INSERT INTO chats (id, user_id, title, created_at) VALUES ($1, $2, $3, $4) RETURNING *"
     )
     .bind(Uuid::new_v4())
-    .bind(&user_id)
+    .bind(&user_id.into_inner())
     .bind(&message.title)
     .bind(&now)
     .fetch_one(&app_state.postgress_cli)
