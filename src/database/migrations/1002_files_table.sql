@@ -3,7 +3,5 @@ CREATE TABLE "files" (
   "user_id" uuid,
   "name" varchar,
   "file_id" varchar,
-  "file_path" varchar,
-  "file_content" varchar,
   "created_at" timestamp
 );
