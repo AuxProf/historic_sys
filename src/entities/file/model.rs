@@ -8,8 +8,6 @@ pub struct File {
     pub user_id: Uuid,
     pub name: String,
     pub file_id: String,
-    pub file_path: String,
-    pub file_content: String,
     pub created_at: DateTime<Local>
 }
 
@@ -17,17 +15,13 @@ pub struct File {
 pub struct ShowFile {
     pub id: Uuid,
     pub name: String,
-    pub file_id: String,
-    pub file_path: String,
-    pub file_content: String
+    pub file_id: String
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateFile {
     pub name: String,
-    pub file_id: String,
-    pub file_path: String,
-    pub file_content: String,
+    pub file_id: String
 }
 
 #[derive(Serialize, Deserialize)]

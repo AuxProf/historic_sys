@@ -70,9 +70,7 @@ async fn get_file(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl R
             .map(|fl| ShowFile { 
                 id: fl.get("id"),
                 name: fl.get("name"), 
-                file_id: fl.get("file_id"), 
-                file_path: fl.get("file_path"), 
-                file_content: fl.get("file_content")
+                file_id: fl.get("file_id")
             })
             .collect::<Vec<ShowFile>>()
         ),
