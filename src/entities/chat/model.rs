@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Local};
+use crate::entities::file::model::ListFile;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -14,6 +15,13 @@ pub struct Chat {
 pub struct TitleChat {
     pub id: Uuid,
     pub title: String
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct FilesChat {
+    pub id: Uuid,
+    pub title: String,
+    pub files: Vec<ListFile>
 }
 
 #[derive(Serialize, Deserialize)]
