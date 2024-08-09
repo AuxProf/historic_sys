@@ -27,14 +27,17 @@ pub struct FilesChat {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct CreateChat {
-    pub title: String,
+pub struct GPTInfo {
     pub assistent_id: String,
     pub thread_id: String
 }
 
+
+
+
+
 #[derive(Serialize, Deserialize)]
-pub struct GPTInfo {
-    pub assistent_id: String,
-    pub thread_id: String
+pub struct CreateChat {
+    pub title: String,
+    pub user_id: Uuid,
 }

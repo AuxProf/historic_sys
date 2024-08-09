@@ -78,9 +78,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("")
                 .wrap(bearer_mid)
-                .configure(entities::user::controller::user_routes)
-                .configure(entities::chat::controller::chat_routes)
-                .configure(entities::file::controller::file_routes)
+                .configure(controllers::gpt_controller::gpt_routes)
             )
     })
     .bind("127.0.0.1:8000")?
