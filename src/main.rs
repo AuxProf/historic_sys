@@ -2,6 +2,7 @@ mod database {
     pub mod postgres;
 }
 mod entities;
+mod controllers;
 
 use actix_web::{dev::ServiceRequest, error::Error, web, App, HttpMessage, HttpServer};
 use dotenv::dotenv;
@@ -78,7 +79,6 @@ async fn main() -> std::io::Result<()> {
                 web::scope("")
                 .wrap(bearer_mid)
                 .configure(entities::user::controller::user_routes)
-                .configure(entities::message::controller::message_routes)
                 .configure(entities::chat::controller::chat_routes)
                 .configure(entities::file::controller::file_routes)
             )

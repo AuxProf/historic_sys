@@ -82,14 +82,12 @@ async fn get_file(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl R
 async fn create(app_state: web::Data<AppState>, file: web::Json<CreateFile>, user_id: web::Path<Uuid>) -> impl Responder {
     let now = chrono::offset::Utc::now();
     let result: Result<sqlx::postgres::PgRow, sqlx::Error> =  sqlx::query(
-        "INSERT INTO files (id, user_id, name, file_id, file_path, file_content, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *"
+        "INSERT INTO files (id, user_id, name, file_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *"
     )
     .bind(Uuid::new_v4())
     .bind(&user_id.into_inner())
     .bind(&file.name)
     .bind(&file.file_id)
-    .bind(&file.file_path)
-    .bind(&file.file_content)
     .bind(&now)
     .fetch_one(&app_state.postgress_cli)
     .await;
