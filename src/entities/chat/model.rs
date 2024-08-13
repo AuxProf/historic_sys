@@ -15,7 +15,7 @@ pub struct Chat {
 
 #[derive(Serialize, Deserialize)]
 pub struct TitleChat {
-    pub id: Uuid,
+    pub thread_id: String,
     pub title: String
 }
 
@@ -31,10 +31,6 @@ pub struct GPTInfo {
     pub assistent_id: String,
     pub thread_id: String
 }
-
-
-
-
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateChat {
