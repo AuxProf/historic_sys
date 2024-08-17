@@ -1,4 +1,5 @@
 use crate::entities::chat;
+use crate::entities::gpt::model::{GptApi, Message};
 use crate::entities::user::model::{CreateUser, User};
 use crate::entities::{chat::model::CreateChat, user};
 use crate::AppState;
@@ -18,7 +19,7 @@ async fn create_user(
     let result = user::service::create(app_state, user).await;
 
     match result {
-        Ok(user) => HttpResponse::Ok().json(  json!({
+        Ok(user) => HttpResponse::Ok().json(json!({
             "id": user.id,
             "email": user.email,
         })),
@@ -26,14 +27,14 @@ async fn create_user(
     }
 }
 
-#[get("/gpt/user/{id}")]
-async fn get_user(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl Responder {
-    //TODO: Chamada do service que puxa a lista de chats
-    let chats = chat::service::get_chat_list(app_state, id).await;
-    //TODO: Chamada do service que puxa a lista de files
+// #[get("/gpt/user/{id}")]
+// async fn get_user(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl Responder {
+//     //TODO: Chamada do service que puxa a lista de chats
+//     let chats = chat::service::get_chat_list(app_state, id).await;
+//     //TODO: Chamada do service que puxa a lista de files
 
-    HttpResponse::Ok().body("Chat criado")
-}
+//     HttpResponse::Ok().body("Chat criado")
+// }
 
 ///////////////////////
 //////
@@ -44,28 +45,28 @@ async fn get_user(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl R
 ////////////////////////////
 
 #[post("/gpt/message/txt")]
-async fn send_message(
-    app_state: web::Data<AppState>,
-    user: web::Json<CreateUser>,
-) -> impl Responder {
-    let now = chrono::offset::Utc::now();
+async fn send_message(gpt_api: web::Data<GptApi>, message: web::Json<Message>) -> impl Responder {
+    gpt_api
+        .send_messages_thread(Message {
+            thread_id: message.thread_id.clone(),
+            text: message.text.clone(),
+        })
+        .await;
 
-    //TODO: Chamada do GPT
-
-    HttpResponse::Ok().body("Chat criado")
+    HttpResponse::Ok().body("Mensagem enviada")
 }
 
-#[post("/gpt/message/img")]
-async fn send_message_img(
-    app_state: web::Data<AppState>,
-    user: web::Json<CreateUser>,
-) -> impl Responder {
-    let now = chrono::offset::Utc::now();
+// #[post("/gpt/message/img")]
+// async fn send_message_img(
+//     app_state: web::Data<AppState>,
+//     user: web::Json<CreateUser>,
+// ) -> impl Responder {
+//     let now = chrono::offset::Utc::now();
 
-    //TODO: Chamada do GPT
+//     //TODO: Chamada do GPT
 
-    HttpResponse::Ok().body("Chat criado")
-}
+//     HttpResponse::Ok().body("Chat criado")
+// }
 
 ///////////////////////
 //////
@@ -75,41 +76,41 @@ async fn send_message_img(
 //////FILE
 ////////////////////////////
 
-#[post("/gpt/file")]
-async fn create_file(
-    app_state: web::Data<AppState>,
-    user: web::Json<CreateUser>,
-) -> impl Responder {
-    let now = chrono::offset::Utc::now();
+// #[post("/gpt/file")]
+// async fn create_file(
+//     app_state: web::Data<AppState>,
+//     user: web::Json<CreateUser>,
+// ) -> impl Responder {
+//     let now = chrono::offset::Utc::now();
 
-    //TODO: Chamada do GPT
-    // cria um file no service
+//     //TODO: Chamada do GPT
+//     // cria um file no service
 
-    HttpResponse::Ok().body("Chat criado")
-}
+//     HttpResponse::Ok().body("Chat criado")
+// }
 
-#[delete("/gpt/file")]
-async fn delete_file(
-    app_state: web::Data<AppState>,
-    user: web::Json<CreateUser>,
-) -> impl Responder {
-    let now = chrono::offset::Utc::now();
+// #[delete("/gpt/file")]
+// async fn delete_file(
+//     app_state: web::Data<AppState>,
+//     user: web::Json<CreateUser>,
+// ) -> impl Responder {
+//     let now = chrono::offset::Utc::now();
 
-    //TODO: Chamada do GPT
-    // cria um file no service
+//     //TODO: Chamada do GPT
+//     // cria um file no service
 
-    HttpResponse::Ok().body("Chat criado")
-}
+//     HttpResponse::Ok().body("Chat criado")
+// }
 
-#[put("/gpt/file")]
-async fn atach_file(app_state: web::Data<AppState>, user: web::Json<CreateUser>) -> impl Responder {
-    let now = chrono::offset::Utc::now();
+// #[put("/gpt/file")]
+// async fn atach_file(app_state: web::Data<AppState>, user: web::Json<CreateUser>) -> impl Responder {
+//     let now = chrono::offset::Utc::now();
 
-    //TODO: Chamada do GPT
-    // cria um file no service
+//     //TODO: Chamada do GPT
+//     // cria um file no service
 
-    HttpResponse::Ok().body("Chat criado")
-}
+//     HttpResponse::Ok().body("Chat criado")
+// }
 
 ///////////////////////
 //////
@@ -122,24 +123,29 @@ async fn atach_file(app_state: web::Data<AppState>, user: web::Json<CreateUser>)
 #[post("/gpt/chat")]
 async fn create_chat(
     app_state: web::Data<AppState>,
+    gpt_api: web::Data<GptApi>,
     chat: web::Json<CreateChat>,
 ) -> impl Responder {
-    //TODO: criar thread
+    let thread_id = gpt_api.create_thread().await;
 
-    let result = chat::service::create(app_state, chat, "".to_string()).await;
+    let result = chat::service::create(app_state, chat, thread_id).await;
 
     match result {
-        Ok(user) =>HttpResponse::Ok().json(  json!({
-            "id": "id",
-        }))
-    ,//HttpResponse::Ok().body("Chat criado"),
+        Ok(chat) => HttpResponse::Ok().json(json!({
+            "title": chat.title,
+            "thread_id": chat.thread_id
+        })),
         Err(_) => HttpResponse::InternalServerError().body("Erro ao inserir chat"),
     }
 }
 
 #[delete("/gpt/chat/{thread_id}")]
-async fn delete_chat(app_state: web::Data<AppState>, thread_id: web::Path<Uuid>) -> impl Responder {
-    //TODO: Chamada do GPT para remover thread
+async fn delete_chat(
+    app_state: web::Data<AppState>,
+    gpt_api: web::Data<GptApi>,
+    thread_id: web::Path<Uuid>,
+) -> impl Responder {
+    let _ = gpt_api.delete_thread(thread_id.to_string()).await;
 
     let result = chat::service::delete(app_state, thread_id).await;
 
@@ -153,17 +159,16 @@ async fn delete_chat(app_state: web::Data<AppState>, thread_id: web::Path<Uuid>)
 async fn refresh_chat(
     app_state: web::Data<AppState>,
     thread_id: web::Path<Uuid>,
+    gpt_api: web::Data<GptApi>,
 ) -> impl Responder {
-    //TODO: Chamada do GPT para remover thread e criar nova
-    let new_thread_id = "".to_string();
-
+    let _ = gpt_api.delete_thread(thread_id.to_string()).await;
+    let new_thread_id = gpt_api.create_thread().await;
     let result = chat::service::update_thread_id(
         app_state,
         thread_id.into_inner().to_string(),
         new_thread_id,
     )
     .await;
-
     match result {
         Ok(_) => HttpResponse::Ok().body("Chat apagado"),
         Err(_) => HttpResponse::InternalServerError().body("Erro ao apagar chat"),
@@ -183,13 +188,13 @@ async fn get_chat_hist(thread_id: web::Path<String>) -> impl Responder {
 
 pub fn gpt_routes(cfg: &mut web::ServiceConfig) {
     //users
-    cfg.service(create_user).service(get_user);
-    //message
-    cfg.service(send_message).service(send_message_img);
-    //file
-    cfg.service(create_file)
-        .service(delete_file)
-        .service(atach_file);
+    // cfg.service(create_user).service(get_user);
+    // //message
+    // cfg.service(send_message).service(send_message_img);
+    // //file
+    // cfg.service(create_file)
+    //     .service(delete_file)
+    //     .service(atach_file);
     //chats
     cfg.service(create_chat)
         .service(delete_chat)

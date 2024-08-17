@@ -1,4 +1,4 @@
-use super::model::{CreateChat, TitleChat};
+use super::model::{Chat, CreateChat, TitleChat};
 use crate::AppState;
 use actix_web::web;
 use sqlx::{postgres::PgRow, Row};
@@ -32,7 +32,7 @@ pub async fn create(
     app_state: web::Data<AppState>,
     chat: web::Json<CreateChat>,
     thread_id: String,
-) -> Result<PgRow, sqlx::Error> {
+) -> Result<TitleChat, sqlx::Error> {
     let now = chrono::offset::Utc::now();
     sqlx::query(
         "INSERT INTO chats (id, user_id, title, thread_id, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *"
@@ -44,6 +44,10 @@ pub async fn create(
     .bind(&now)
     .fetch_one(&app_state.postgress_cli)
     .await
+    .map(|_| TitleChat {
+        thread_id: thread_id,
+        title: chat.title.clone()
+    })
 }
 
 pub async fn delete(

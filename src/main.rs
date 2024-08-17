@@ -6,6 +6,7 @@ mod controllers;
 
 use actix_web::{dev::ServiceRequest, error::Error, web, App, HttpMessage, HttpServer};
 use dotenv::dotenv;
+use entities::gpt::model::GptApi;
 use sqlx::{Pool, Postgres}; 
 
 
@@ -65,7 +66,10 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let _pool = database::postgres::start_con().await;
     
-    let jwt_env = std::env::var("JSON_WEB_TOKEN_SECRET").expect("JWT não inserido");
+    let jwt_env: String = std::env::var("JSON_WEB_TOKEN_SECRET").expect("JWT não inserido");
+    let gpt_url: String = std::env::var("GPT_URL").expect("GPT_URL não inserido");
+    let gpt_key: String = std::env::var("GPT_KEY").expect("GPT_KEY não inserido");
+    let gpt_assistent: String = std::env::var("GPT_ASSISTENT").expect("GPT_KEY não inserido");
 
     HttpServer::new(move || {
         let bearer_mid = HttpAuthentication::bearer(validator);
@@ -73,6 +77,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(AppState {
                 postgress_cli: _pool.clone(),
                 jwt: jwt_env.clone(),
+            }))
+            .app_data(web::Data::new(GptApi {
+                url: gpt_url.clone(), 
+                key: gpt_key.clone(),
+                assistent: gpt_assistent.clone()
             }))
             .configure(entities::client::controller::client_routes)
             .service(
