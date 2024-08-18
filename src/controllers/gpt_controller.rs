@@ -1,6 +1,6 @@
 use crate::entities::chat;
-use crate::entities::gpt::model::{GptApi, Message};
-use crate::entities::user::model::{CreateUser, User};
+use crate::entities::gpt::model::{GptApi, Message, ToImageMessage};
+use crate::entities::user::model::CreateUser;
 use crate::entities::{chat::model::CreateChat, user};
 use crate::AppState;
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
@@ -27,14 +27,16 @@ async fn create_user(
     }
 }
 
-// #[get("/gpt/user/{id}")]
-// async fn get_user(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl Responder {
-//     //TODO: Chamada do service que puxa a lista de chats
-//     let chats = chat::service::get_chat_list(app_state, id).await;
-//     //TODO: Chamada do service que puxa a lista de files
+#[get("/gpt/user/{id}")]
+async fn get_user(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl Responder {
+    //TODO: Chamada do service que puxa a lista de chats
+    let chats = chat::service::get_chat_list(app_state, id).await;
+    //TODO: Chamada do service que puxa a lista de files
 
-//     HttpResponse::Ok().body("Chat criado")
-// }
+    HttpResponse::Ok().json(json!({
+    "chats": chats
+    }))
+}
 
 ///////////////////////
 //////
@@ -56,17 +58,19 @@ async fn send_message(gpt_api: web::Data<GptApi>, message: web::Json<Message>) -
     HttpResponse::Ok().body("Mensagem enviada")
 }
 
-// #[post("/gpt/message/img")]
-// async fn send_message_img(
-//     app_state: web::Data<AppState>,
-//     user: web::Json<CreateUser>,
-// ) -> impl Responder {
-//     let now = chrono::offset::Utc::now();
-
-//     //TODO: Chamada do GPT
-
-//     HttpResponse::Ok().body("Chat criado")
-// }
+#[post("/gpt/message/img")]
+async fn send_message_img(
+    gpt_api: web::Data<GptApi>,
+    message: web::Json<ToImageMessage>,
+) -> impl Responder {
+    let result = gpt_api.send_message_to_dall_e(message.text.clone()).await;
+    match result {
+        Some(url) => HttpResponse::Ok().json(json!({
+            "url": url
+        })),
+        None => HttpResponse::InternalServerError().body("Erro ao enviar instrução"),
+    }
+}
 
 ///////////////////////
 //////
@@ -176,10 +180,9 @@ async fn refresh_chat(
 }
 
 #[get("/gpt/chat/{thread_id}")]
-async fn get_chat_hist(thread_id: web::Path<String>) -> impl Responder {
-    //return messages da api gpt com o thread id
-
-    HttpResponse::Ok().body("Menssagens do Chat")
+async fn get_chat_hist(gpt_api: web::Data<GptApi>, thread_id: web::Path<String>) -> impl Responder {
+    let messages = gpt_api.get_messages(thread_id.into_inner(), 20).await;
+    HttpResponse::Ok().json(messages)
 }
 
 ///////////////////////
@@ -188,9 +191,9 @@ async fn get_chat_hist(thread_id: web::Path<String>) -> impl Responder {
 
 pub fn gpt_routes(cfg: &mut web::ServiceConfig) {
     //users
-    // cfg.service(create_user).service(get_user);
-    // //message
-    // cfg.service(send_message).service(send_message_img);
+    cfg.service(create_user).service(get_user);
+    //message
+    cfg.service(send_message).service(send_message_img);
     // //file
     // cfg.service(create_file)
     //     .service(delete_file)
