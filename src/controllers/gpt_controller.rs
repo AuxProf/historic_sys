@@ -63,7 +63,7 @@ async fn send_message_img(
     gpt_api: web::Data<GptApi>,
     message: web::Json<ToImageMessage>,
 ) -> impl Responder {
-    let result = gpt_api.send_message_to_dall_e(message.text.clone()).await;
+    let result = gpt_api.get_message_to_dall_e(message.text.clone()).await;
     match result {
         Some(url) => HttpResponse::Ok().json(json!({
             "url": url
@@ -71,6 +71,13 @@ async fn send_message_img(
         None => HttpResponse::InternalServerError().body("Erro ao enviar instrução"),
     }
 }
+// #[post("/gpt/message/img")]
+// async fn send_img(
+//     gpt_api: web::Data<GptApi>,
+//     message: web::Json<ToImageMessage>,
+// ) -> impl Responder {
+//     HttpResponse::Ok().body("")
+// }
 
 ///////////////////////
 //////
@@ -193,7 +200,9 @@ pub fn gpt_routes(cfg: &mut web::ServiceConfig) {
     //users
     cfg.service(create_user).service(get_user);
     //message
-    cfg.service(send_message).service(send_message_img);
+    cfg.service(send_message)
+        .service(send_message_img);
+        // .service(send_img);
     // //file
     // cfg.service(create_file)
     //     .service(delete_file)

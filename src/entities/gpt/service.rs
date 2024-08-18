@@ -109,7 +109,7 @@ impl GptApi {
         }
     }
 
-    pub async fn send_message_to_dall_e(&self, text: String) -> Option<String> {
+    pub async fn get_message_to_dall_e(&self, text: String) -> Option<String> {
         let mut header = HeaderMap::new();
         header.insert("Content-Type", format!("application/json").parse().unwrap());
         header.insert(AUTHORIZATION, format!("Bearer {}", self.key.to_string()).parse().unwrap());
@@ -143,4 +143,8 @@ impl GptApi {
             Err(_) => None,
         }
     }
+
+    pub async fn send_file(&self){}
+    
+    pub async fn send_img_to_thread(&self){}
 }
