@@ -99,6 +99,7 @@ impl GptApi {
                                     .map(|content| content.text.value)
                                     .unwrap_or_default(), // Usa um valor padrão caso o texto não seja encontrado
                             })
+                            .rev()
                             .collect();
                         Some(messages)
                     }
@@ -112,7 +113,10 @@ impl GptApi {
     pub async fn get_message_to_dall_e(&self, text: String) -> Option<String> {
         let mut header = HeaderMap::new();
         header.insert("Content-Type", format!("application/json").parse().unwrap());
-        header.insert(AUTHORIZATION, format!("Bearer {}", self.key.to_string()).parse().unwrap());
+        header.insert(
+            AUTHORIZATION,
+            format!("Bearer {}", self.key.to_string()).parse().unwrap(),
+        );
 
         let client = reqwest::Client::new();
         let res = client
@@ -144,7 +148,34 @@ impl GptApi {
         }
     }
 
-    pub async fn send_file(&self){}
-    
-    pub async fn send_img_to_thread(&self){}
+    pub async fn send_file(&self) {}
+
+    pub async fn delete_file(&self) {}
+
+    pub async fn send_img_to_thread(&self) {}
+
+    pub async fn send_image_hist_thread(&self, message: Message, url: &String) {
+        let client = reqwest::Client::new();
+        let _ = client
+            .post(format!(
+                "{}threads/{}/messages",
+                self.url, message.thread_id
+            ))
+            .headers(get_headers(self.key.to_string()))
+            .body(format!(
+                r#"{{"role": "user","content": "{0}"}}"#,
+                message.text
+            ))
+            .send()
+            .await;
+        let _ = client
+            .post(format!(
+                "{}threads/{}/messages",
+                self.url, message.thread_id
+            ))
+            .headers(get_headers(self.key.to_string()))
+            .body(format!(r#"{{"role": "assistant","content": "{0}"}}"#, url))
+            .send()
+            .await;
+    }
 }

@@ -1,15 +1,15 @@
 mod database {
     pub mod postgres;
 }
-mod entities;
 mod controllers;
+mod entities;
 
+use actix_cors::Cors;
 use actix_web::{dev::ServiceRequest, error::Error, web, App, HttpMessage, HttpServer};
 use dotenv::dotenv;
 use entities::gpt::model::GptApi;
-use sqlx::{Pool, Postgres}; 
-
-
+use sqlx::{Pool, Postgres};
+use actix_web::http::header;
 
 use actix_web_httpauth::{
     extractors::{
@@ -32,9 +32,7 @@ async fn validator(
     req: ServiceRequest,
     credentials: BearerAuth,
 ) -> Result<ServiceRequest, (Error, ServiceRequest)> {
-    
     let jwt_env = std::env::var("JSON_WEB_TOKEN_SECRET").expect("JWT não inserido");
-
 
     let key: Hmac<Sha256> = Hmac::new_from_slice(jwt_env.as_bytes()).unwrap();
     let token_string = credentials.token();
@@ -60,34 +58,41 @@ async fn validator(
     }
 }
 
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let _pool = database::postgres::start_con().await;
-    
+
     let jwt_env: String = std::env::var("JSON_WEB_TOKEN_SECRET").expect("JWT não inserido");
     let gpt_url: String = std::env::var("GPT_URL").expect("GPT_URL não inserido");
     let gpt_key: String = std::env::var("GPT_KEY").expect("GPT_KEY não inserido");
     let gpt_assistent: String = std::env::var("GPT_ASSISTENT").expect("GPT_KEY não inserido");
+    let front_domain: String = std::env::var("FRONTEND_DOMAIN").expect("FRONTEND_DOMAIN não inserido");
 
     HttpServer::new(move || {
         let bearer_mid = HttpAuthentication::bearer(validator);
         App::new()
+            .wrap(
+                Cors::default()
+                    .allowed_origin(&front_domain) // Permite apenas essa origem
+                    .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"]) // Permite os métodos GET, POST, PUT, DELETE
+                    .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE]) // Permite esses cabeçalhos
+                    .max_age(3600), // Tempo máximo em segundos que o navegador pode armazenar as permissões CORS
+            )
             .app_data(web::Data::new(AppState {
                 postgress_cli: _pool.clone(),
                 jwt: jwt_env.clone(),
             }))
             .app_data(web::Data::new(GptApi {
-                url: gpt_url.clone(), 
+                url: gpt_url.clone(),
                 key: gpt_key.clone(),
-                assistent: gpt_assistent.clone()
+                assistent: gpt_assistent.clone(),
             }))
             .configure(entities::client::controller::client_routes)
             .service(
                 web::scope("")
-                .wrap(bearer_mid)
-                .configure(controllers::gpt_controller::gpt_routes)
+                    .wrap(bearer_mid)
+                    .configure(controllers::gpt_controller::gpt_routes),
             )
     })
     .bind("127.0.0.1:8000")?

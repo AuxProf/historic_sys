@@ -1,6 +1,7 @@
-use crate::entities::chat;
-use crate::entities::gpt::model::{GptApi, Message, ToImageMessage};
+use crate::entities::file::model::CreateFile;
+use crate::entities::gpt::model::{GptApi, Message};
 use crate::entities::user::model::CreateUser;
+use crate::entities::{chat, file};
 use crate::entities::{chat::model::CreateChat, user};
 use crate::AppState;
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
@@ -27,15 +28,23 @@ async fn create_user(
     }
 }
 
-#[get("/gpt/user/{id}")]
-async fn get_user(app_state: web::Data<AppState>, id: web::Path<Uuid>) -> impl Responder {
-    //TODO: Chamada do service que puxa a lista de chats
-    let chats = chat::service::get_chat_list(app_state, id).await;
-    //TODO: Chamada do service que puxa a lista de files
+#[get("/gpt/user/{email}")]
+async fn get_user(app_state: web::Data<AppState>, email: web::Path<String>) -> impl Responder {
+    let op_user = user::service::get_user(app_state.clone(), email).await;
 
-    HttpResponse::Ok().json(json!({
-    "chats": chats
-    }))
+    match op_user {
+        Some(user) => {
+            let chats = chat::service::get_chat_list(app_state.clone(), user.id.into()).await;
+
+            // TODO: Chamada do service que puxa a lista de arquivos (files) pode ser adicionada aqui.
+
+            HttpResponse::Ok().json(json!({
+                "id": user.id,
+                "chats": chats
+            }))
+        }
+        None => HttpResponse::InternalServerError().body("Usuário não encontrado"),
+    }
 }
 
 ///////////////////////
@@ -61,13 +70,18 @@ async fn send_message(gpt_api: web::Data<GptApi>, message: web::Json<Message>) -
 #[post("/gpt/message/img")]
 async fn send_message_img(
     gpt_api: web::Data<GptApi>,
-    message: web::Json<ToImageMessage>,
+    message: web::Json<Message>,
 ) -> impl Responder {
     let result = gpt_api.get_message_to_dall_e(message.text.clone()).await;
     match result {
-        Some(url) => HttpResponse::Ok().json(json!({
-            "url": url
-        })),
+        Some(url) => {
+            let _ = gpt_api
+                .send_image_hist_thread(message.into_inner(), &url)
+                .await;
+            HttpResponse::Ok().json(json!({
+                "text": &url
+            }))
+        }
         None => HttpResponse::InternalServerError().body("Erro ao enviar instrução"),
     }
 }
@@ -87,41 +101,46 @@ async fn send_message_img(
 //////FILE
 ////////////////////////////
 
-// #[post("/gpt/file")]
-// async fn create_file(
-//     app_state: web::Data<AppState>,
-//     user: web::Json<CreateUser>,
-// ) -> impl Responder {
-//     let now = chrono::offset::Utc::now();
+#[post("/gpt/file")]
+async fn create_file(
+    app_state: web::Data<AppState>,
+    file: web::Json<CreateFile>,
+) -> impl Responder {
+    let file_id = "".to_string();
+    let file = file::service::create(app_state, file, file_id).await;
+    match file {
+        Some(file) => HttpResponse::Ok().json(json!(file)),
+        None => HttpResponse::InternalServerError().body("Erro ao enviar Arquivo"),
+    }
+}
 
-//     //TODO: Chamada do GPT
-//     // cria um file no service
+#[delete("/gpt/file/{file_id}")]
+async fn delete_file(app_state: web::Data<AppState>, file_id: web::Path<String>) -> impl Responder {
+    let file = file::service::delete(app_state, file_id.into_inner()).await;
 
-//     HttpResponse::Ok().body("Chat criado")
-// }
+    match file {
+        Ok(_) => HttpResponse::Ok().body("Arquivo deletado"),
+        Err(_) => HttpResponse::InternalServerError().body("Erro ao deletar Arquivo"),
+    }
+}
 
-// #[delete("/gpt/file")]
-// async fn delete_file(
-//     app_state: web::Data<AppState>,
-//     user: web::Json<CreateUser>,
-// ) -> impl Responder {
-//     let now = chrono::offset::Utc::now();
+#[put("/gpt/file")]
+async fn atach_file(
+    app_state: web::Data<AppState>,
+    file_chat: web::Json<file::model::FileChat>,
+) -> impl Responder {
+    let result = file::service::atach_file(
+        app_state,
+        file_chat.chat_id.clone(),
+        file_chat.file_id.clone(),
+    )
+    .await;
 
-//     //TODO: Chamada do GPT
-//     // cria um file no service
-
-//     HttpResponse::Ok().body("Chat criado")
-// }
-
-// #[put("/gpt/file")]
-// async fn atach_file(app_state: web::Data<AppState>, user: web::Json<CreateUser>) -> impl Responder {
-//     let now = chrono::offset::Utc::now();
-
-//     //TODO: Chamada do GPT
-//     // cria um file no service
-
-//     HttpResponse::Ok().body("Chat criado")
-// }
+    match result {
+        Some(st) => HttpResponse::Ok().body(st),
+        None => HttpResponse::InternalServerError().body("Erro ao executar operação"),
+    }
+}
 
 ///////////////////////
 //////
@@ -188,7 +207,14 @@ async fn refresh_chat(
 
 #[get("/gpt/chat/{thread_id}")]
 async fn get_chat_hist(gpt_api: web::Data<GptApi>, thread_id: web::Path<String>) -> impl Responder {
-    let messages = gpt_api.get_messages(thread_id.into_inner(), 20).await;
+    let messages = gpt_api.get_messages(thread_id.into_inner(), 80).await;
+
+    HttpResponse::Ok().json(messages)
+}
+
+#[get("/gpt/chat/last/{thread_id}")]
+async fn get_chat_last(gpt_api: web::Data<GptApi>, thread_id: web::Path<String>) -> impl Responder {
+    let messages = gpt_api.get_messages(thread_id.into_inner(), 1).await;
     HttpResponse::Ok().json(messages)
 }
 
@@ -200,16 +226,16 @@ pub fn gpt_routes(cfg: &mut web::ServiceConfig) {
     //users
     cfg.service(create_user).service(get_user);
     //message
-    cfg.service(send_message)
-        .service(send_message_img);
-        // .service(send_img);
+    cfg.service(send_message).service(send_message_img);
+    // .service(send_img);
     // //file
-    // cfg.service(create_file)
-    //     .service(delete_file)
-    //     .service(atach_file);
+    cfg.service(create_file)
+        .service(delete_file)
+        .service(atach_file);
     //chats
     cfg.service(create_chat)
         .service(delete_chat)
         .service(refresh_chat)
-        .service(get_chat_hist);
+        .service(get_chat_hist)
+        .service(get_chat_last);
 }

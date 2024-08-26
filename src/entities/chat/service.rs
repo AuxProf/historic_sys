@@ -1,4 +1,6 @@
-use super::model::{Chat, CreateChat, TitleChat};
+use std::collections::HashMap;
+
+use super::model::{CreateChat, TitleChat};
 use crate::AppState;
 use actix_web::web;
 use sqlx::{postgres::PgRow, Row};
@@ -6,26 +8,51 @@ use uuid::Uuid;
 
 pub async fn get_chat_list(
     app_state: web::Data<AppState>,
-    user_id: web::Path<Uuid>,
-) -> Vec<TitleChat>{
-    let result =
-        sqlx::query("SELECT thread_id, title FROM chats WHERE user_id = $1 ORDER BY created_at ASC")
-            .bind(&user_id.into_inner())
-            .fetch_all(&app_state.postgress_cli)
-            .await;
+    user_id: Uuid,
+) -> Vec<TitleChat> {
+    let chats = sqlx::query(
+        "SELECT id, thread_id, title FROM chats WHERE user_id = $1 ORDER BY created_at ASC",
+    )
+    .bind(&user_id)
+    .fetch_all(&app_state.postgress_cli)
+    .await
+    .unwrap_or_else(|_| vec![]);
 
-    match result {
-        Ok(chats) => 
-            chats
-                .iter()
-                .map(|chat| TitleChat {
-                    thread_id: chat.get("thread_id"),
-                    title: chat.get("title"),
-                })
-                .collect::<Vec<TitleChat>>(),
-       
-        Err(_) => Vec::new(),
+    // Extrair os IDs dos chats como Uuid
+    let chat_ids: Vec<Uuid> = chats
+        .iter()
+        .map(|chat| chat.get::<Uuid, _>("id"))
+        .collect();
+
+    let files = sqlx::query(
+        "SELECT cf.chat_id, cf.file_id, f.name FROM chat_file cf LEFT JOIN files f ON f.file_id = cf.file_id WHERE cf.chat_id = ANY($1)",
+    )
+    .bind(&chat_ids)
+    .fetch_all(&app_state.postgress_cli)
+    .await
+    .unwrap_or_else(|_| vec![]);
+
+    let mut files_map: HashMap<Uuid, Vec<String>> = HashMap::new();
+
+    for file in files {
+        let chat_id: Uuid = file.get("chat_id");
+        let entry = files_map.entry(chat_id).or_insert_with(Vec::new);
+        entry.push(file.get("file_id"));
     }
+
+    let chat_list = chats
+        .into_iter()
+        .map(|chat| {
+            let id: Uuid = chat.get("id");
+            TitleChat {
+                thread_id: chat.get("thread_id"),
+                title: chat.get("title"),
+                files: files_map.remove(&id).unwrap_or_else(Vec::new),
+            }
+        })
+        .collect::<Vec<TitleChat>>();
+
+    chat_list
 }
 
 pub async fn create(
@@ -46,7 +73,8 @@ pub async fn create(
     .await
     .map(|_| TitleChat {
         thread_id: thread_id,
-        title: chat.title.clone()
+        title: chat.title.clone(),
+        files: Vec::new()
     })
 }
 

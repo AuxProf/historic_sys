@@ -23,11 +23,6 @@ pub struct Message {
     pub text: String
 }
 
-#[derive(Serialize,Deserialize)]
-pub struct ToImageMessage {
-    pub text: String
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct GitMessage {
     pub role: String,
