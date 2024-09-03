@@ -13,9 +13,9 @@ COPY ./src ./src
 RUN rm ./target/release/deps/historic_sys*
 RUN cargo build --release
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
-# Instalar a biblioteca libssl
+# Instalar as bibliotecas necessárias
 RUN apt-get update && apt-get install -y libssl-dev && apt-get clean
 
 COPY --from=build /historic_sys/target/release/historic_sys .
