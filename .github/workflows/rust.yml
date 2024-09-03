@@ -7,7 +7,12 @@ on:
     branches: [ "main" ]
 
 env:
-  CARGO_TERM_COLOR: always
+  DATABASE_URL: "postgresql://localhost:5432?dbname=r_test&user=postgres&password=1234"
+  JSON_WEB_TOKEN_SECRET: ${{ secrets.JSON_WEB_TOKEN_SECRET }}
+  FRONTEND_DOMAIN: "http://localhost:3000"
+  GPT_URL: ${{ secrets.GPT_URL }}
+  GPT_KEY: ${{ secrets.GPT_KEY }}
+  GPT_ASSISTENT: ${{ secrets.GPT_ASSISTENT }}
 
 jobs:
   build:

@@ -4,6 +4,8 @@ mod database {
 mod controllers;
 mod entities;
 
+use std::net::SocketAddr;
+
 use actix_cors::Cors;
 use actix_web::{dev::ServiceRequest, error::Error, web, App, HttpMessage, HttpServer};
 use dotenv::dotenv;
@@ -62,13 +64,13 @@ async fn validator(
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let _pool = database::postgres::start_con().await;
-
     let jwt_env: String = std::env::var("JSON_WEB_TOKEN_SECRET").expect("JWT não inserido");
     let gpt_url: String = std::env::var("GPT_URL").expect("GPT_URL não inserido");
     let gpt_key: String = std::env::var("GPT_KEY").expect("GPT_KEY não inserido");
     let gpt_assistent: String = std::env::var("GPT_ASSISTENT").expect("GPT_KEY não inserido");
     let front_domain: String = std::env::var("FRONTEND_DOMAIN").expect("FRONTEND_DOMAIN não inserido");
-
+    let port = std::env::var("PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8000);
+    let address = SocketAddr::from(([0, 0, 0, 0], port));
     HttpServer::new(move || {
         let bearer_mid = HttpAuthentication::bearer(validator);
         App::new()
@@ -95,7 +97,7 @@ async fn main() -> std::io::Result<()> {
                     .configure(controllers::gpt_controller::gpt_routes),
             )
     })
-    .bind("127.0.0.1:8000")?
+    .bind(address)?
     .run()
     .await
 }
