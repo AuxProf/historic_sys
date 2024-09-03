@@ -4,7 +4,7 @@ FROM rust:1.80 as build
 RUN USER=root cargo new --bin historic_sys
 WORKDIR /historic_sys
 
-COPY ./Cargo.lock ./Cargo.lock
+# COPY ./Cargo.lock ./Cargo.lock
 COPY ./Cargo.toml ./Cargo.toml
 RUN cargo build --release
 
