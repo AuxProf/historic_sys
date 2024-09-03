@@ -23,6 +23,12 @@ pub struct Message {
     pub text: String
 }
 
+#[derive(Serialize,Deserialize)]
+pub struct MessageImage {
+    pub thread_id: String,
+    pub url: String
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct GitMessage {
     pub role: String,
@@ -40,12 +46,18 @@ pub struct MessageData {
 pub struct Content {
     #[serde(rename = "type")]
     pub content_type: String,
-    pub text: MessageContent,
+    pub text: Option<MessageContent>,
+    pub image_url: Option<ImageContent>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct MessageContent {
     pub value: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ImageContent {
+    pub url: String,
 }
 
 #[derive(Serialize, Deserialize)]

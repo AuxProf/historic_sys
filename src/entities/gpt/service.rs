@@ -1,5 +1,4 @@
-use super::model::{GitMessage, GptApi, Message, ResponseData, ResponseUrl, Thread};
-
+use super::model::{GitMessage, GptApi, Message, MessageImage, ResponseData, ResponseUrl, Thread};
 use reqwest::header::{HeaderMap, AUTHORIZATION};
 
 fn get_headers(token: String) -> HeaderMap {
@@ -36,7 +35,7 @@ impl GptApi {
         }
     }
 
-    pub async fn delete_thread(&self, id: String) -> Result<reqwest::Response, reqwest::Error> {
+    pub async fn delete_thread(&self, id: &String) -> Result<reqwest::Response, reqwest::Error> {
         let client = reqwest::Client::new();
         let res = client
             .delete(format!("{}threads/{}", self.url, id))
@@ -47,7 +46,10 @@ impl GptApi {
         res
     }
 
-    pub async fn send_messages_thread(&self, message: Message) {
+    pub async fn send_messages_thread(
+        &self,
+        message: Message,
+    ) -> Result<reqwest::Response, reqwest::Error> {
         let client = reqwest::Client::new();
         let _ = client
             .post(format!(
@@ -62,12 +64,12 @@ impl GptApi {
             .send()
             .await;
 
-        let _ = client
+        client
             .post(format!("{}threads/{}/runs", self.url, message.thread_id))
             .headers(get_headers(self.key.to_string()))
             .body(format!(r#"{{"assistant_id": "{0}"}}"#, self.assistent))
             .send()
-            .await;
+            .await
     }
 
     pub async fn get_messages(&self, thread_id: String, limit: i8) -> Option<Vec<GitMessage>> {
@@ -90,14 +92,27 @@ impl GptApi {
                         let messages: Vec<GitMessage> = response_data
                             .data
                             .into_iter()
-                            .map(|message_data| GitMessage {
-                                role: message_data.role,
-                                text: message_data
+                            .map(|message_data| {
+                                let text_message = message_data
                                     .content
-                                    .into_iter()
+                                    .iter()
                                     .find(|content| content.content_type == "text")
-                                    .map(|content| content.text.value)
-                                    .unwrap_or_default(), // Usa um valor padrão caso o texto não seja encontrado
+                                    .and_then(|content| {
+                                        content.text.as_ref().map(|t| t.value.clone())
+                                    });
+
+                                let image_message = message_data
+                                    .content
+                                    .iter()
+                                    .find(|content| content.content_type == "image_url")
+                                    .and_then(|content| {
+                                        content.image_url.as_ref().map(|img| img.url.clone())
+                                    });
+
+                                GitMessage {
+                                    role: message_data.role,
+                                    text: text_message.or(image_message).unwrap_or_default(),
+                                }
                             })
                             .rev()
                             .collect();
@@ -148,11 +163,79 @@ impl GptApi {
         }
     }
 
-    pub async fn send_file(&self) {}
+    // pub async fn send_file(&self, content: Multipart) -> String {
+    //     // TODO: implementar o sendfile por aqui ao invez da gambiarra do front
+    // }
 
-    pub async fn delete_file(&self) {}
+    pub async fn delete_file(&self, file_id: &String) {
+        println!("a");
+        let client = reqwest::Client::new();
+        let _ = client
+            .delete(format!("{}files/{}", self.url, file_id))
+            .headers(get_headers(self.key.to_string()))
+            .send()
+            .await;
+    }
 
-    pub async fn send_img_to_thread(&self) {}
+    pub async fn update_file_attachments(&self, thread_id: &String, file_ids: Vec<String>) {
+
+        // Formatação dos anexos
+        let client = reqwest::Client::new();
+        let attachments: Vec<String> = file_ids
+            .into_iter()
+            .map(|id| format!(r#""{}""#, id))
+            .collect();
+
+        let body = format!(
+            r#"{{
+                "tool_resources": {{
+                    "code_interpreter": {{
+                    "file_ids": [{}]
+                        }}
+                    }}
+                }}"#,
+            attachments.join(",")
+        );
+        let _ = client
+            .post(format!("{}/threads/{}", self.url, thread_id))
+            .headers(get_headers(self.key.to_string()))
+            .body(body)
+            .send()
+            .await;
+    }
+
+    pub async fn send_img_to_thread(&self, message: MessageImage) {
+        let client = reqwest::Client::new();
+        let _ = client
+            .post(format!(
+                "{}threads/{}/messages",
+                self.url, message.thread_id
+            ))
+            .headers(get_headers(self.key.to_string()))
+            .body(format!(
+                r#"{{
+                        "role": "user",
+                        "content": [
+                            {{
+                                "type": "image_url",
+                                "image_url": {{
+                                    "url": "{0}"
+                                }}
+                            }}
+                        ]
+                    }}"#,
+                message.url
+            ))
+            .send()
+            .await;
+
+        let _ = client
+            .post(format!("{}threads/{}/runs", self.url, message.thread_id))
+            .headers(get_headers(self.key.to_string()))
+            .body(format!(r#"{{"assistant_id": "{0}"}}"#, self.assistent))
+            .send()
+            .await;
+    }
 
     pub async fn send_image_hist_thread(&self, message: Message, url: &String) {
         let client = reqwest::Client::new();

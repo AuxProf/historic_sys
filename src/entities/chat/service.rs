@@ -80,11 +80,11 @@ pub async fn create(
 
 pub async fn delete(
     app_state: web::Data<AppState>,
-    thread_id: web::Path<Uuid>,
+    thread_id: &String,
 ) -> Result<PgRow, sqlx::Error> {
     //TODO: Chamada do GPT para remover thread
     sqlx::query("DELETE FROM chats WHERE thread_id = $1 RETURNING *")
-        .bind(&thread_id.into_inner())
+        .bind(&thread_id)
         .fetch_one(&app_state.postgress_cli)
         .await
 }
