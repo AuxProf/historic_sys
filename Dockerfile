@@ -13,9 +13,10 @@ COPY ./src ./src
 RUN rm ./target/release/deps/historic_sys*
 RUN cargo build --release
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
-RUN apt-get update && apt-get install -y libssl1.1 && apt-get clean
+# Instalar a biblioteca libssl
+RUN apt-get update && apt-get install -y libssl-dev && apt-get clean
 
 COPY --from=build /historic_sys/target/release/historic_sys .
 

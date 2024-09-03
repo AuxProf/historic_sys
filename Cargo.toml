@@ -18,6 +18,7 @@ sqlx = { version = "0.8.0", features = ["chrono", "postgres", "runtime-tokio-nat
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
 futures-util = "0.3"
 reqwest = { version = "0.12", features = ["json", "multipart"] }
+openssl = { version = "0.10", features = ["vendored"] }
 
 
 
