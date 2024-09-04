@@ -76,9 +76,12 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or(8000);
     let address = SocketAddr::from(([0, 0, 0, 0], port));
     
-    println!("{:?}",gpt_url);
-    println!("{:?}",gpt_key);
-    println!("{:?}",gpt_assistent);
+    let gpty = GptApi {
+        url: gpt_url.clone(),
+        key: gpt_key.clone(),
+        assistent: gpt_assistent.clone(),
+    };
+    println!("{:?}",gpty);
 
     HttpServer::new(move || {
         let bearer_mid = HttpAuthentication::bearer(validator);

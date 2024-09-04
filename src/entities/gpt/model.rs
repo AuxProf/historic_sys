@@ -10,7 +10,7 @@ pub struct Thread {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GptApi {
     pub url: String,
     pub key: String,
