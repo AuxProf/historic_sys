@@ -7,11 +7,11 @@ mod entities;
 use std::net::SocketAddr;
 
 use actix_cors::Cors;
+use actix_web::http::header;
 use actix_web::{dev::ServiceRequest, error::Error, web, App, HttpMessage, HttpServer};
 use dotenv::dotenv;
 use entities::gpt::model::GptApi;
 use sqlx::{Pool, Postgres};
-use actix_web::http::header;
 
 use actix_web_httpauth::{
     extractors::{
@@ -68,15 +68,19 @@ async fn main() -> std::io::Result<()> {
     let gpt_url: String = std::env::var("GPT_URL").expect("GPT_URL não inserido");
     let gpt_key: String = std::env::var("GPT_KEY").expect("GPT_KEY não inserido");
     let gpt_assistent: String = std::env::var("GPT_ASSISTENT").expect("GPT_KEY não inserido");
-    let front_domain: String = std::env::var("FRONTEND_DOMAIN").expect("FRONTEND_DOMAIN não inserido");
-    let port = std::env::var("PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8000);
+    // let front_domain: String =
+    //     std::env::var("FRONTEND_DOMAIN").expect("FRONTEND_DOMAIN não inserido");
+    let port = std::env::var("PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8000);
     let address = SocketAddr::from(([0, 0, 0, 0], port));
     HttpServer::new(move || {
         let bearer_mid = HttpAuthentication::bearer(validator);
         App::new()
             .wrap(
                 Cors::default()
-                    .allowed_origin(&front_domain) // Permite apenas essa origem
+                    .allowed_origin_fn(|_origin, _| true) // Permite qualquer origem
                     .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"]) // Permite os métodos GET, POST, PUT, DELETE
                     .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE]) // Permite esses cabeçalhos
                     .max_age(3600), // Tempo máximo em segundos que o navegador pode armazenar as permissões CORS
