@@ -65,10 +65,9 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let _pool = database::postgres::start_con().await;
     let jwt_env: String = std::env::var("JSON_WEB_TOKEN_SECRET").expect("JWT não inserido");
-    let gpt_url: String = String::from("https://api.openai.com/v1/");
-    // std::env::var("GPT_URL").expect("GPT_URL não inserido");
+    let gpt_url: String = std::env::var("GPT_URL").expect("GPT_URL não inserido");
     let gpt_key: String = std::env::var("GPT_KEY").expect("GPT_KEY não inserido");
-    let gpt_assistent: String = std::env::var("GPT_ASSISTENT").expect("GPT_KEY não inserido");
+    let gpt_assistent: String = std::env::var("GPT_ASSISTENT").expect("GPT_ASSISTENT não inserido");
     // let front_domain: String =
     //     std::env::var("FRONTEND_DOMAIN").expect("FRONTEND_DOMAIN não inserido");
     let port = std::env::var("PORT")

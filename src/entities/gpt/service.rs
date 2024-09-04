@@ -17,6 +17,8 @@ impl GptApi {
             .send()
             .await;
 
+            println!("url {:?} - key {:?}",self.url, self.key.to_string());
+            println!("result {:?}",res);
         match res {
             Ok(result) => {
                 let body = result.text().await;
