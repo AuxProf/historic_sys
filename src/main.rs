@@ -76,6 +76,11 @@ async fn main() -> std::io::Result<()> {
         .and_then(|s| s.parse().ok())
         .unwrap_or(8000);
     let address = SocketAddr::from(([0, 0, 0, 0], port));
+    
+    println!("{:?}",gpt_url);
+    println!("{:?}",gpt_key);
+    println!("{:?}",gpt_assistent);
+
     HttpServer::new(move || {
         let bearer_mid = HttpAuthentication::bearer(validator);
         App::new()
