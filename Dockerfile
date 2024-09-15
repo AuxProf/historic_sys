@@ -5,7 +5,7 @@ FROM rust:1.80 as builder
 WORKDIR /historic_sys
 
 # Copiar o arquivo Cargo.toml e resolver dependências
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
 RUN cargo build --release && rm -rf src
 
 # Copiar o código-fonte do projeto
