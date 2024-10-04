@@ -1,11 +1,11 @@
 # Fase 1: Construção
-FROM rust:1.81 as builder  # Atualizando para Rust 1.81
+FROM rust:1.81 as builder
 
 # Criação de um diretório para o projeto e configuração do contexto de trabalho
 WORKDIR /app
 
-# Copiar Cargo.toml e Cargo.lock para que as dependências sejam compiladas
-COPY Cargo.toml Cargo.lock ./
+# Copiar Cargo.toml para que as dependências sejam compiladas
+COPY Cargo.toml ./
 
 # Compilar as dependências para cachear dependências
 RUN cargo build --release || true
