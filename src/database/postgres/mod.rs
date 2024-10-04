@@ -1,22 +1,20 @@
 use sqlx::{Postgres, Pool, postgres::PgPoolOptions};
 
-pub async fn start_con() -> Pool<Postgres>{
+pub async fn start_con() -> Pool<Postgres> {
     let postg_env = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     let pool = PgPoolOptions::new()
-    .max_connections(5)
-    .connect(&postg_env)
-    .await
-    .expect("Fail to conect");
+        .max_connections(5)
+        .connect(&postg_env)
+        .await
+        .expect("Failed to connect to the database");
 
-    let migrations = sqlx::migrate!("./src/database/migrations")
-    .run(&pool)
-    .await;
+    sqlx::migrate!("./src/database/migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to run migrations");
 
-    match migrations {
-        Ok(_) => println!("Migrations ran successfully"),
-        Err(e) => println!("Error running migrations: {:?}",e),
-    }
+    println!("Migrations ran successfully");
 
     pool
 }
