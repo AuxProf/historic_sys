@@ -7,9 +7,6 @@ WORKDIR /app
 # Copiar Cargo.toml para que as dependências sejam compiladas
 COPY Cargo.toml ./
 
-# Tentar copiar Cargo.lock (se existir)
-COPY Cargo.lock ./
-
 # Compilar as dependências para cachear dependências
 RUN cargo build --release || true
 
