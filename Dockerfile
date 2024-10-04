@@ -1,21 +1,25 @@
-# Fase de build
+# Fase 1: Construção
 FROM rust:1.80 as builder
 
+# Criação de um diretório para o projeto e configuração do contexto de trabalho
 WORKDIR /app
 
-# Copiar os arquivos do cargo.toml e o lock para o cache das dependências
-COPY Cargo.toml Cargo.lock ./
+# Copiar Cargo.toml para que as dependências sejam compiladas
+COPY Cargo.toml ./
 
-# Primeiro compilamos as dependências para que possamos aproveitar o cache do Docker
-RUN cargo fetch
-RUN cargo build --release --bin dummy || true
+# Tentar copiar Cargo.lock (se existir)
+COPY Cargo.lock ./
 
-# Agora copiamos o código fonte completo e construímos novamente
+# Compilar as dependências para cachear dependências
+RUN cargo build --release || true
+
+# Copiar o código-fonte do projeto
 COPY ./src ./src
 
+# Construir o binário final
 RUN cargo build --release
 
-# Fase de execução
+# Fase 2: Imagem final
 FROM debian:bookworm-slim
 
 # Instalar as bibliotecas necessárias
@@ -24,8 +28,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copiar o binário compilado da fase de build
+# Copiar o binário da fase de construção
 COPY --from=builder /app/target/release/historic_sys /usr/local/bin/historic_sys
 
-# Executar o binário
-CMD ["/usr/local/bin/historic_sys"]
+# Definir o ponto de entrada do contêiner
+CMD ["historic_sys"]
