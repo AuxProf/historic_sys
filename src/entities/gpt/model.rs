@@ -1,32 +1,43 @@
 use serde::{Deserialize, Serialize};
 
-
-
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Thread {
     pub id: String,
     #[serde(flatten)]
     extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct JsonLineFile {
+    pub title: String,
+    pub path: String,
+    pub content: String
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct File {
+    pub id: String,
+    #[serde(flatten)]
+    extra: std::collections::HashMap<String, serde_json::Value>
+}
 
 #[derive(Clone, Debug)]
 pub struct GptApi {
     pub url: String,
     pub key: String,
-    pub assistent: String
+    pub assistent: String,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Message {
     pub thread_id: String,
-    pub text: String
+    pub text: String,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct MessageImage {
     pub thread_id: String,
-    pub url: String
+    pub url: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -72,6 +83,5 @@ pub struct ResponseUrl {
 
 #[derive(Serialize, Deserialize)]
 pub struct ResponseUrlData {
-    pub url: String
+    pub url: String,
 }
-

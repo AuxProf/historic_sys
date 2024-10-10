@@ -4,8 +4,10 @@ use crate::entities::user::model::CreateUser;
 use crate::entities::{chat, file};
 use crate::entities::{chat::model::CreateChat, user};
 use crate::AppState;
+use actix_multipart::Multipart;
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use serde_json::json;
+use uuid::Uuid;
 
 ///////////////////////
 //////USER
@@ -109,15 +111,24 @@ async fn send_img(gpt_api: web::Data<GptApi>, message: web::Json<MessageImage>) 
 //////FILE
 ////////////////////////////
 
-#[post("/gpt/file")]
+#[post("/gpt/file/{user_id}")]
 async fn create_file(
     app_state: web::Data<AppState>,
-    file: web::Json<CreateFile>,
+    gpt_api: web::Data<GptApi>,
+    user_id: web::Path<Uuid>,
+    payload: Multipart
 ) -> impl Responder {
-    let file = file::service::create(app_state, file).await;
-    match file {
-        Some(file) => HttpResponse::Ok().json(json!(file)),
-        None => HttpResponse::InternalServerError().body("Erro ao enviar Arquivo"),
+    let content = file::recive_files::save_file(payload).await;
+    match content {
+        Ok(contents) => {
+            let id = gpt_api.send_file(contents.clone()).await;
+            let created = file::service::create(app_state, CreateFile { name: contents.title, user_id: *user_id, file_id: id }).await;
+            let _ = std::fs::remove_file(contents.path);
+            HttpResponse::Ok().json(json!(created))
+        }
+        Err(_) => {
+            HttpResponse::InternalServerError().body("Erro ao enviar Arquivo")
+        }
     }
 }
 
@@ -144,12 +155,7 @@ async fn atach_file(
     file_chat: web::Json<file::model::FileChat>,
 ) -> impl Responder {
     let t_id = file_chat.thread_id.clone();
-    let result = file::service::attach_file(
-        app_state,
-        &t_id,
-        file_chat.files.clone(),
-    )
-    .await;
+    let result = file::service::attach_file(app_state, &t_id, file_chat.files.clone()).await;
     let _ = gpt_api.update_file_attachments(&t_id, result).await;
 
     HttpResponse::Ok().body("Arquivos conectados")
@@ -170,9 +176,7 @@ async fn create_chat(
     chat: web::Json<CreateChat>,
 ) -> impl Responder {
     let thread_id = gpt_api.create_thread().await;
-
     let result = chat::service::create(app_state, chat, thread_id).await;
-
     match result {
         Ok(chat) => HttpResponse::Ok().json(json!({
             "title": chat.title,
@@ -236,16 +240,14 @@ async fn get_chat_last(gpt_api: web::Data<GptApi>, thread_id: web::Path<String>)
 ////////////////////////////
 
 #[get("/gpt/key")]
-async fn get_key(
-    gpt_api: web::Data<GptApi>,
-) -> impl Responder {
+async fn get_key(gpt_api: web::Data<GptApi>) -> impl Responder {
     HttpResponse::Ok().json(json!({"key":gpt_api.key}))
 }
 
 ///////////////////////
 //////
 ////////////////////////////
-/// 
+///
 pub fn gpt_routes(cfg: &mut web::ServiceConfig) {
     //users
     cfg.service(create_user).service(get_user);

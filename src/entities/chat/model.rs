@@ -12,7 +12,7 @@ pub struct Chat {
     pub created_at: DateTime<Local>
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TitleChat {
     pub thread_id: String,
     pub title: String,

@@ -4,7 +4,7 @@ use actix_web::web;
 use sqlx::{postgres::PgRow, Row};
 use uuid::Uuid;
 
-pub async fn create(app_state: web::Data<AppState>, file: web::Json<CreateFile>) -> Option<File> {
+pub async fn create(app_state: web::Data<AppState>, file: CreateFile) -> Option<File> {
     let now = chrono::offset::Utc::now();
     let result: Result<sqlx::postgres::PgRow, sqlx::Error> =  sqlx::query(
         "INSERT INTO files (id, user_id, name, file_id, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *"

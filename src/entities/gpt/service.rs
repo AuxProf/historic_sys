@@ -1,5 +1,6 @@
-use super::model::{GitMessage, GptApi, Message, MessageImage, ResponseData, ResponseUrl, Thread};
+use super::model::{GitMessage, GptApi, Message, MessageImage, ResponseData, ResponseUrl, Thread, File, JsonLineFile};
 use reqwest::header::{HeaderMap, AUTHORIZATION};
+use serde_json::json;
 
 fn get_headers(token: String) -> HeaderMap {
     let mut header = HeaderMap::new();
@@ -17,8 +18,6 @@ impl GptApi {
             .send()
             .await;
 
-            println!("url {:?} - key {:?}",self.url, self.key.to_string());
-            println!("result {:?}",res);
         match res {
             Ok(result) => {
                 let body = result.text().await;
@@ -165,12 +164,48 @@ impl GptApi {
         }
     }
 
-    // pub async fn send_file(&self, content: Multipart) -> String {
-    //     // TODO: implementar o sendfile por aqui ao invez da gambiarra do front
-    // }
+    pub async fn send_file(&self, file_content: JsonLineFile) -> String {
+        let client = reqwest::Client::new();
+        let json_lines_content: String = file_content.content
+            .lines()
+            .map(|line| {
+                // Se a linha já for JSON válido, mantemos; se não, a convertimos
+                match serde_json::from_str::<serde_json::Value>(line) {
+                    Ok(json_value) => serde_json::to_string(&json_value).unwrap(),
+                    Err(_) => serde_json::to_string(&json!({ "text": line })).unwrap(),
+                }
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        let form = reqwest::multipart::Form::new()
+            .text("purpose", "fine-tune")
+            .part("file", reqwest::multipart::Part::bytes(json_lines_content.into_bytes()).file_name(file_content.title));
+        let response = client
+        .post("https://api.openai.com/v1/files")
+        .headers(get_headers(self.key.to_string()))
+        .multipart(form)
+        .send()
+        .await;
+
+        match response {
+            Ok(result) => {
+                let body = result.text().await;
+                match body {
+                    Ok(body_text) => {
+                        let file_response: Result<File, _> = serde_json::from_str(&body_text);
+                        match file_response {
+                            Ok(file) => file.id,
+                            Err(_) => "".to_string(),
+                        }
+                    }
+                    Err(_) => "".to_string(),
+                }
+            }
+            Err(_) => "".to_string(),
+        }
+    }
 
     pub async fn delete_file(&self, file_id: &String) {
-        println!("a");
         let client = reqwest::Client::new();
         let _ = client
             .delete(format!("{}files/{}", self.url, file_id))
