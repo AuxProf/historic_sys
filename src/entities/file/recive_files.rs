@@ -15,8 +15,7 @@ pub(crate) async fn save_file(mut payload: Multipart) -> Result<JsonLineFile, Er
         else { "default.txt".to_string() };
         
         let dir_path = "./uploads/";
-        let hash = uuid::Uuid::new_v4().to_string();
-        let filepath = format!("{}/{}_{}", dir_path, sanitize_filename::sanitize(&filename), hash);
+        let filepath = format!("{}/{}", dir_path, sanitize_filename::sanitize(&filename));
         if !Path::new(dir_path).exists() { fs::create_dir_all(dir_path)?; }
         let mut f = File::create(&filepath).await?;
         while let Some(chunk) = field.try_next().await? { f.write_all(&chunk).await?; }
