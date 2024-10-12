@@ -42,8 +42,10 @@ pub struct MessageImage {
 
 #[derive(Serialize, Deserialize)]
 pub struct GitMessage {
+    pub id: String,
     pub role: String,
     pub text: String,
+    pub status: String
 }
 
 #[derive(Serialize, Deserialize)]
@@ -74,8 +76,18 @@ pub struct ImageContent {
 #[derive(Serialize, Deserialize)]
 pub struct ResponseData {
     pub data: Vec<MessageData>,
+    pub has_more: bool
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct RunsList {
+    pub data: Vec<Runs>
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Runs {
+    pub status: String
+}
 #[derive(Serialize, Deserialize)]
 pub struct ResponseUrl {
     pub data: Vec<ResponseUrlData>,

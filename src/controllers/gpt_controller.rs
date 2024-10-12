@@ -91,6 +91,7 @@ async fn send_message_img(
         None => HttpResponse::InternalServerError().body("Erro ao enviar instrução"),
     }
 }
+
 #[post("/gpt/message/img/send")]
 async fn send_img(gpt_api: web::Data<GptApi>, message: web::Json<MessageImage>) -> impl Responder {
     gpt_api

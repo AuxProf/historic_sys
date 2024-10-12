@@ -1,5 +1,6 @@
-use super::model::{GitMessage, GptApi, Message, MessageImage, ResponseData, ResponseUrl, Thread, File, JsonLineFile};
+use super::model::{File, GitMessage, GptApi, JsonLineFile, Message, MessageImage, ResponseData, ResponseUrl, RunsList, Thread};
 use reqwest::header::{HeaderMap, AUTHORIZATION};
+use serde::de::Error;
 use serde_json::json;
 
 fn get_headers(token: String) -> HeaderMap {
@@ -75,54 +76,54 @@ impl GptApi {
 
     pub async fn get_messages(&self, thread_id: String, limit: i8) -> Option<Vec<GitMessage>> {
         let client = reqwest::Client::new();
-        let res = client
-            .get(format!(
-                "{}threads/{}/messages?limit={}",
-                self.url, thread_id, limit
-            ))
-            .headers(get_headers(self.key.to_string()))
-            .send()
-            .await;
-
-        match res {
+        let res = client.get(format!("{}threads/{}/messages?limit={}", self.url, thread_id, limit)).headers(get_headers(self.key.to_string())).send().await;
+        let run: Result<reqwest::Response, reqwest::Error> = client.get(format!("{}threads/{}/runs?limit=1", self.url, thread_id)).headers(get_headers(self.key.to_string())).send().await;
+        
+        let message_response: Result<ResponseData, _> = match res {
             Ok(result) => {
-                let body = result.text().await.ok()?; // Retorna `None` se falhar ao obter o corpo da resposta
-                let message_response: Result<ResponseData, _> = serde_json::from_str(&body);
+                let body = result.text().await.ok()?;
+                serde_json::from_str(&body)
+            }, Err(_) => Err(serde_json::Error::custom("Failed to get a valid response"))
+        };
+
+        let status: String = match run {
+            Ok(result) => {
+                let body = result.text().await.ok()?;
+                let message_response: Result<RunsList, _> = serde_json::from_str(&body);
                 match message_response {
-                    Ok(response_data) => {
-                        let messages: Vec<GitMessage> = response_data
-                            .data
-                            .into_iter()
-                            .map(|message_data| {
-                                let text_message = message_data
-                                    .content
-                                    .iter()
-                                    .find(|content| content.content_type == "text")
-                                    .and_then(|content| {
-                                        content.text.as_ref().map(|t| t.value.clone())
-                                    });
-
-                                let image_message = message_data
-                                    .content
-                                    .iter()
-                                    .find(|content| content.content_type == "image_url")
-                                    .and_then(|content| {
-                                        content.image_url.as_ref().map(|img| img.url.clone())
-                                    });
-
-                                GitMessage {
-                                    role: message_data.role,
-                                    text: text_message.or(image_message).unwrap_or_default(),
-                                }
-                            })
-                            .rev()
-                            .collect();
-                        Some(messages)
-                    }
-                    Err(_) => None, // Retorna `None` se a desserialização falhar
+                    Ok(result) => {
+                        let resul: String = if result.data.is_empty() { "Fail".to_string()} else { result.data[0].status.clone() };
+                        if resul == "queued" || resul == "in_progress" {"Loading".to_string()}
+                        else if resul == "completed" {"Completed".to_string()}
+                        else{"Fail".to_string()}
+                    }, Err(_) => "Fail".to_string()
                 }
+            }, Err(_) => "Fail".to_string()
+        };
+
+        
+        match message_response {
+            Ok(response_data) => {
+                let messages: Vec<GitMessage> = response_data
+                    .data.into_iter().map(|message_data| {
+                        let text_message = message_data.content.iter()
+                            .find(|content| content.content_type == "text")
+                            .and_then(|content| { content.text.as_ref().map(|t| t.value.clone()) });
+
+                        let image_message = message_data.content.iter()
+                            .find(|content| content.content_type == "image_url")
+                            .and_then(|content| { content.image_url.as_ref().map(|img| img.url.clone()) });
+
+                        GitMessage {
+                            id: message_data.id,
+                            role: message_data.role,
+                            text: text_message.or(image_message).unwrap_or_default(),
+                            status: status.clone()
+                        }
+                    }).rev().collect();
+                Some(messages)
             }
-            Err(_) => None, // Retorna `None` se a requisição falhar
+            Err(_) => None,
         }
     }
 
