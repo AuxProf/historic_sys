@@ -8,15 +8,16 @@ use tokio::io::AsyncWriteExt;
 use std::path::Path;
 use crate::entities::gpt::model::JsonLineFile;
 
+const DIR_PATH: &str = "uploads";
+
 pub(crate) async fn save_file(mut payload: Multipart) -> Result<JsonLineFile, Error> {
     while let Some(mut field) = payload.try_next().await? {
         let content_disposition = field.content_disposition();
         let filename = if let Some(filename) = content_disposition.get_filename() { filename.to_string() } 
         else { "default.txt".to_string() };
         
-        let dir_path = "./uploads/";
-        let filepath = format!("{}/{}", dir_path, sanitize_filename::sanitize(&filename));
-        if !Path::new(dir_path).exists() { fs::create_dir_all(dir_path)?; }
+        let filepath = format!("./{}/{}", DIR_PATH, sanitize_filename::sanitize(&filename));
+        if !Path::new(DIR_PATH).exists() { fs::create_dir_all(DIR_PATH)?; }
         let mut f = File::create(&filepath).await?;
         while let Some(chunk) = field.try_next().await? { f.write_all(&chunk).await?; }
         match extract_file_contents(&filepath) {
@@ -27,6 +28,20 @@ pub(crate) async fn save_file(mut payload: Multipart) -> Result<JsonLineFile, Er
             }),
             Err(e) => return Err(e),
         }
+    }
+    Err(actix_web::error::ErrorBadRequest("No file found"))
+}
+
+pub(crate) async fn get_filepath(mut payload: Multipart) -> Result<String, Error> {
+    while let Some(mut field) = payload.try_next().await? {
+        let content_disposition = field.content_disposition();
+        let filename = if let Some(filename) = content_disposition.get_filename() { filename.to_string() } 
+        else { "default.txt".to_string() };
+        let filepath = format!("{}/{}", DIR_PATH, sanitize_filename::sanitize(&filename));
+        if !Path::new(DIR_PATH).exists() { fs::create_dir_all(DIR_PATH)?; }
+        let mut f = File::create(&filepath).await?;
+        while let Some(chunk) = field.try_next().await? { f.write_all(&chunk).await?; }
+        return Ok(filepath);
     }
     Err(actix_web::error::ErrorBadRequest("No file found"))
 }

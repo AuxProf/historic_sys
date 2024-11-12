@@ -28,6 +28,7 @@ use sha2::Sha256;
 pub struct AppState {
     postgress_cli: Pool<Postgres>,
     jwt: String,
+    domain: String
 }
 
 async fn validator(
@@ -68,8 +69,7 @@ async fn main() -> std::io::Result<()> {
     let gpt_url: String = std::env::var("GPT_URL").expect("GPT_URL não inserido");
     let gpt_key: String = std::env::var("GPT_KEY").expect("GPT_KEY não inserido");
     let gpt_assistent: String = std::env::var("GPT_ASSISTENT").expect("GPT_ASSISTENT não inserido");
-    // let front_domain: String =
-    //     std::env::var("FRONTEND_DOMAIN").expect("FRONTEND_DOMAIN não inserido");
+    let domain: String = std::env::var("DOMAIN").expect("DOMAIN não inserido");
     let port = std::env::var("PORT")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -89,6 +89,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(AppState {
                 postgress_cli: _pool.clone(),
                 jwt: jwt_env.clone(),
+                domain: domain.clone()
             }))
             .app_data(web::Data::new(GptApi {
                 url: gpt_url.clone(),

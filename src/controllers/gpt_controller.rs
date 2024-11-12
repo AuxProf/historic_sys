@@ -92,16 +92,17 @@ async fn send_message_img(
     }
 }
 
-#[post("/gpt/message/img/send")]
-async fn send_img(gpt_api: web::Data<GptApi>, message: web::Json<MessageImage>) -> impl Responder {
-    gpt_api
-        .send_img_to_thread(MessageImage {
-            thread_id: message.thread_id.clone(),
-            url: message.url.clone(),
-        })
-        .await;
-
-    HttpResponse::Ok().body("Mensagem enviada")
+#[post("/gpt/message/img/{thread_id}")]
+async fn send_img(
+    app_state: web::Data<AppState>, 
+    gpt_api: web::Data<GptApi>,
+    thread_id: web::Path<String>,
+    payload: Multipart,
+) -> impl Responder {
+    let content: String = file::recive_files::get_filepath(payload).await.unwrap();
+    let url: String = format!("{}/{}", app_state.domain, content);
+    gpt_api.send_img_to_thread(MessageImage { thread_id: thread_id.into_inner(), url: url.clone() }).await;
+    HttpResponse::Ok().body(url)
 }
 
 ///////////////////////
@@ -117,19 +118,25 @@ async fn create_file(
     app_state: web::Data<AppState>,
     gpt_api: web::Data<GptApi>,
     user_id: web::Path<Uuid>,
-    payload: Multipart
+    payload: Multipart,
 ) -> impl Responder {
     let content = file::recive_files::save_file(payload).await;
     match content {
         Ok(contents) => {
             let id = gpt_api.send_file(contents.clone()).await;
-            let created = file::service::create(app_state, CreateFile { name: contents.title, user_id: *user_id, file_id: id }).await;
+            let created = file::service::create(
+                app_state,
+                CreateFile {
+                    name: contents.title,
+                    user_id: *user_id,
+                    file_id: id,
+                },
+            )
+            .await;
             let _ = std::fs::remove_file(contents.path);
             HttpResponse::Ok().json(json!(created))
         }
-        Err(_) => {
-            HttpResponse::InternalServerError().body("Erro ao enviar Arquivo")
-        }
+        Err(_) => HttpResponse::InternalServerError().body("Erro ao enviar Arquivo"),
     }
 }
 
