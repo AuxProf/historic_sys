@@ -19,6 +19,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
     libssl-dev \
     ca-certificates \
+    antiword \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /historic_sys/target/release/historic_sys .

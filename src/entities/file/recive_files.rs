@@ -1,5 +1,6 @@
 use actix_web::Error;
 use dotext_ed8fc7b::{Docx, MsDoc, Pptx, Xlsx};
+use std::process::Command;
 use std::{fs, io::Read};
 use actix_multipart::Multipart;
 use futures_util::TryStreamExt as _;
@@ -86,6 +87,7 @@ fn extract_docx_file(filepath: &str) -> Result<String, Error> {
     let mut file = Docx::open(&filepath).unwrap();
     let mut contents = String::new();
     let _ = file.read_to_string(&mut contents);
+    println!("{}",contents);
     Ok(contents)
 }
 
@@ -98,7 +100,12 @@ fn extract_pptx_file(filepath: &str) -> Result<String, Error> {
 
 // Futuras inplementações
 fn extract_doc_file(filepath: &str) -> Result<String, Error> {
-    Ok(filepath.to_string())
+    let output = Command::new("antiword")
+        .arg(filepath)
+        .output()
+        .map_err(|e| format!("Erro ao executar antiword: {}", e)).unwrap();
+        let contents = String::from_utf8(output.stdout).map_err(|e| format!("Erro de encoding UTF-8: {}", e));
+        Ok(contents.unwrap())
 }
 
 fn extract_xls_file(filepath: &str) -> Result<String, Error> {
